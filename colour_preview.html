@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timing Colour Preview</title>
+<style>
+    :root {
+        --bg: #0e0e10;
+        --surface: #1a1a1f;
+        --surface2: #222228;
+        --border: #2a2a32;
+        --text: #e4e4e8;
+        --text-dim: #8888a0;
+        --accent: #6c8cff;
+        --green: #4ade80;
+        --amber: #fbbf24;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+    }
+
+    header {
+        margin-bottom: 36px;
+    }
+
+    h1 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+    }
+    h1 .icon { font-size: 26px; margin-right: 8px; }
+
+    .subtitle {
+        color: var(--text-dim);
+        font-size: 14px;
+    }
+
+    .stats {
+        display: flex;
+        gap: 12px;
+        margin: 24px 0 32px;
+        flex-wrap: wrap;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 20px;
+        min-width: 140px;
+    }
+    .stat .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-dim);
+        margin-bottom: 4px;
+    }
+    .stat .value {
+        font-size: 22px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .stat .value.accent { color: var(--accent); }
+    .stat .value.green  { color: var(--green); }
+    .stat .value.amber  { color: var(--amber); }
+
+    .filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-btn {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 13px;
+        color: var(--text-dim);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+    }
+    .search-box {
+        margin-left: auto;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-size: 13px;
+        color: var(--text);
+        font-family: inherit;
+        width: 200px;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .search-box:focus { border-color: var(--accent); }
+    .search-box::placeholder { color: var(--text-dim); }
+
+    .tree-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .tree-table thead th {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-dim);
+        padding: 12px 16px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+    }
+    .tree-table thead th:first-child { padding-left: 16px; }
+
+    .tree-table tr {
+        transition: background 0.1s;
+    }
+    .tree-table tr:hover {
+        background: var(--surface2);
+    }
+    .tree-table tr.hidden {
+        display: none;
+    }
+
+    .tree-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .tree-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .name-cell {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 400px;
+    }
+    .name-cell .icon {
+        margin-right: 6px;
+        font-size: 14px;
+    }
+    .name-cell .title {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+    .root-badge     { background: #6c8cff22; color: var(--accent); }
+    .changed-badge  { background: #4ade8022; color: var(--green); }
+    .unchanged-badge { background: #88888822; color: var(--text-dim); }
+
+    .swatch-cell {
+        width: 120px;
+    }
+    .swatch {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: "SF Mono", "Menlo", monospace;
+        min-width: 90px;
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+    .swatch.unchanged {
+        opacity: 0.5;
+        font-weight: 400;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        font-style: italic;
+    }
+
+    .arrow-cell {
+        width: 32px;
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 16px;
+    }
+
+    .root-row td {
+        background: var(--surface2);
+    }
+    .root-row .title {
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .footer {
+        margin-top: 32px;
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 12px;
+    }
+
+    /* Expand/collapse animation */
+    .collapse-toggle {
+        cursor: pointer;
+        user-select: none;
+    }
+    .collapse-toggle:hover .title {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 700px) {
+        .stats { flex-direction: column; }
+        .search-box { width: 100%; margin-left: 0; margin-top: 8px; }
+        .name-cell { max-width: 200px; }
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1><span class="icon">🎨</span>Timing Colour Preview</h1>
+        <p class="subtitle">Dry-run preview — no changes have been saved yet</p>
+    </header>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="label">Total projects</div>
+            <div class="value">92</div>
+        </div>
+        <div class="stat">
+            <div class="label">Would change</div>
+            <div class="value green">86</div>
+        </div>
+        <div class="stat">
+            <div class="label">Variation</div>
+            <div class="value accent">50</div>
+        </div>
+        <div class="stat">
+            <div class="label">Seed</div>
+            <div class="value">random</div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="changed">Changed only</button>
+        <button class="filter-btn" data-filter="roots">Roots only</button>
+        <input type="text" class="search-box" placeholder="Search projects…" id="searchBox">
+    </div>
+
+    <table class="tree-table">
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Before</th>
+                <th></th>
+                <th>After</th>
+            </tr>
+        </thead>
+        <tbody id="treeBody">
+            <tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">Construct</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#C74DFF; color:#000;">#C74DFF</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#C74DFF; color:#000;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Meetings</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#D576FF; color:#000;">#D576FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E29CFB; color:#000;">#E29CFB</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">EDU 7130</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E262FB; color:#000;">#E262FB</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#A452F6; color:#000;">#A452F6</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Comms</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#B914F2; color:#fff;">#B914F2</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#9640F8; color:#fff;">#9640F8</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">EDU 7140</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#C776FF; color:#000;">#C776FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E36BF5; color:#000;">#E36BF5</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">ALY 6600</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#CE24FF; color:#fff;">#CE24FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#C177FF; color:#000;">#C177FF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">LWP 6122</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E89CFF; color:#000;">#E89CFF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F08CFF; color:#000;">#F08CFF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#A726FF; color:#fff;">#A726FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#A244FC; color:#000;">#A244FC</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">ALY 6600</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#BD4FF9; color:#000;">#BD4FF9</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#DC9DFF; color:#000;">#DC9DFF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">EDU 6871</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E398FF; color:#000;">#E398FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#9A3FF9; color:#fff;">#9A3FF9</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">SLD Reviews</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E09EF7; color:#000;">#E09EF7</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#EF92FF; color:#000;">#EF92FF</div>
+            </td>
+    </tr>
+<tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">LearnWorlds</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#1276E3; color:#fff;">#1276E3</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#1276E3; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#1C6BE9; color:#fff;">#1C6BE9</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#39A7EF; color:#000;">#39A7EF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Comms</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#0051E8; color:#fff;">#0051E8</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#0B87E7; color:#fff;">#0B87E7</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Work</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#0D65ED; color:#fff;">#0D65ED</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#5F92E0; color:#000;">#5F92E0</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Platform Review</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#398BE1; color:#000;">#398BE1</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#1F3FE3; color:#fff;">#1F3FE3</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Data Analysis - Site Builder Prompts</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#007CF4; color:#fff;">#007CF4</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#2C69E8; color:#fff;">#2C69E8</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Learner Agent Testing</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#3885E1; color:#000;">#3885E1</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#82A8E0; color:#000;">#82A8E0</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Meetings</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#0041E7; color:#fff;">#0041E7</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#3570DF; color:#fff;">#3570DF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Daily Review</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#0C92EA; color:#000;">#0C92EA</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#0083EF; color:#fff;">#0083EF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Research</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#237BE3; color:#fff;">#237BE3</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#3A96E8; color:#000;">#3A96E8</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Morning Prep</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#008EE9; color:#fff;">#008EE9</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#3869EA; color:#fff;">#3869EA</div>
+            </td>
+    </tr>
+<tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">Shortlisted</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F13226; color:#fff;">#F13226</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#F13226; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Meetings</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F96F78; color:#000;">#F96F78</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FE7172; color:#000;">#FE7172</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Clients</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FB541E; color:#000;">#FB541E</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F9886A; color:#000;">#F9886A</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Ett Venter</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#EF2100; color:#fff;">#EF2100</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F85E41; color:#000;">#F85E41</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Luke Hendricks</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF5921; color:#000;">#FF5921</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F38D3C; color:#000;">#F38D3C</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Giovannu Hochobeb</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF685B; color:#000;">#FF685B</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F23C22; color:#fff;">#F23C22</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Victor Rivas Garcia</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF8D6A; color:#000;">#FF8D6A</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FDAE9A; color:#000;">#FDAE9A</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Amy-Leigh Aliphon</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF0500; color:#fff;">#FF0500</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F7C1AA; color:#000;">#F7C1AA</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Amelia Waller</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FD8343; color:#000;">#FD8343</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FFD4C5; color:#000;">#FFD4C5</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Daniel Gershon</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF261F; color:#fff;">#FF261F</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FE9B6B; color:#000;">#FE9B6B</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Jan Wilhelm Viljoen</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF0F00; color:#fff;">#FF0F00</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F4BDBE; color:#000;">#F4BDBE</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Sune Kemp</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F16100; color:#000;">#F16100</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FAC197; color:#000;">#FAC197</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Aviwe Kondile</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF572D; color:#000;">#FF572D</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#EE3336; color:#fff;">#EE3336</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Mick Halse</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F8403A; color:#000;">#F8403A</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FA7758; color:#000;">#FA7758</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Ruby Parker</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF7800; color:#000;">#FF7800</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FF9264; color:#000;">#FF9264</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Jana Krige</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F27116; color:#000;">#F27116</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FFDAC0; color:#000;">#FFDAC0</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Carol Dwyer</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF0C01; color:#fff;">#FF0C01</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F1CCB0; color:#000;">#F1CCB0</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Josh Wingfield</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF9667; color:#000;">#FF9667</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#EF633C; color:#000;">#EF633C</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Ally Martinez</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF0400; color:#fff;">#FF0400</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F05E1F; color:#000;">#F05E1F</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Thando Lekhade</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F97600; color:#000;">#F97600</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FF943D; color:#000;">#FF943D</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Mario Garcia</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FD6C5C; color:#000;">#FD6C5C</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F84D30; color:#000;">#F84D30</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Adelé Immelman</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FF3B00; color:#fff;">#FF3B00</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FA7C4D; color:#000;">#FA7C4D</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Ismail Vinoos</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FA7B11; color:#000;">#FA7B11</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FD9C71; color:#000;">#FD9C71</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Nadine Strydom</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F84C00; color:#000;">#F84C00</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FE7B70; color:#000;">#FE7B70</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Jobs Pipeline</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F70007; color:#fff;">#F70007</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FD3600; color:#fff;">#FD3600</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#EF2B19; color:#fff;">#EF2B19</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FE4A19; color:#000;">#FE4A19</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">CEO Meetings</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FD8358; color:#000;">#FD8358</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F83F47; color:#000;">#F83F47</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Client Comms</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#EE424B; color:#000;">#EE424B</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E84458; color:#000;">#E84458</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Marketing</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F04500; color:#fff;">#F04500</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E93545; color:#fff;">#E93545</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Reddit Engagement</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#EF5800; color:#000;">#EF5800</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E76482; color:#000;">#E76482</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Analytics</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#EF4500; color:#fff;">#EF4500</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#DE0D0D; color:#fff;">#DE0D0D</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Development</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F16367; color:#000;">#F16367</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FB284B; color:#fff;">#FB284B</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">SCORE Development</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E898AD; color:#000;">#E898AD</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FF0636; color:#fff;">#FF0636</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Platform Development</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F9B0A4; color:#000;">#F9B0A4</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FD2550; color:#fff;">#FD2550</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Website Development</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F26977; color:#000;">#F26977</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F56B9E; color:#000;">#F56B9E</div>
+            </td>
+    </tr>
+<tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">Personal</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#22FF0D; color:#000;">#22FF0D</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#22FF0D; color:#000;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Yours &amp; Mine</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#16FE00; color:#000;">#16FE00</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#18FF39; color:#000;">#18FF39</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Comms</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#23F400; color:#000;">#23F400</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#44FC12; color:#000;">#44FC12</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#3BFA32; color:#000;">#3BFA32</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#22FA00; color:#000;">#22FA00</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Job Applications</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#5FF324; color:#000;">#5FF324</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#11FF00; color:#000;">#11FF00</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Gaming</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#59FF5E; color:#000;">#59FF5E</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#2CFF03; color:#000;">#2CFF03</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Iris Worlds</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#2AF800; color:#000;">#2AF800</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#76FF34; color:#000;">#76FF34</div>
+            </td>
+    </tr>
+<tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">The Forge and the Fable</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F500FF; color:#fff;">#F500FF</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#F500FF; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Solo PBPs</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F140FB; color:#000;">#F140FB</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F200FF; color:#fff;">#F200FF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">NadTheNam</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#D81CF4; color:#fff;">#D81CF4</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F203F5; color:#fff;">#F203F5</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Zesshi</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F200C8; color:#fff;">#F200C8</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#E300FF; color:#fff;">#E300FF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Orchid-Sifter</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#C427F6; color:#fff;">#C427F6</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FD00FD; color:#fff;">#FD00FD</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">The Meddlers</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#CA0EF9; color:#fff;">#CA0EF9</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#BD00F4; color:#fff;">#BD00F4</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Sessions</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#B13DF6; color:#000;">#B13DF6</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#D30AFA; color:#fff;">#D30AFA</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Session Prep</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#B72BF6; color:#fff;">#B72BF6</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#C700FA; color:#fff;">#C700FA</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Session Notes</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#C400EF; color:#fff;">#C400EF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#9000E8; color:#fff;">#9000E8</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Value Add</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#DE00FF; color:#fff;">#DE00FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#D800FC; color:#fff;">#D800FC</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F800E0; color:#fff;">#F800E0</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#FF00DE; color:#fff;">#FF00DE</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Tavern Mix</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F500FE; color:#fff;">#F500FE</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#D618FA; color:#fff;">#D618FA</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Dev</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#E337FF; color:#000;">#E337FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#BB54FF; color:#000;">#BB54FF</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Comms</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#DC00F3; color:#fff;">#DC00F3</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#F500E3; color:#fff;">#F500E3</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Admin</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#FB3EFF; color:#000;">#FB3EFF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#C903F1; color:#fff;">#C903F1</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Creating New Ambiences</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#F550FF; color:#000;">#F550FF</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#DD31FF; color:#000;">#DD31FF</div>
+            </td>
+    </tr>
+<tr class="root-row">
+        <td class="name-cell" style="padding-left:12px;">
+            <span class="icon">📁</span>
+            <span class="title">Other</span>
+            <span class="badge root-badge">Root</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#000000; color:#fff;">#000000</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#000000; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="unchanged-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge unchanged-badge">Unchanged</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262223; color:#fff;">#262223</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#262223; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#261E20; color:#fff;">#261E20</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#262223; color:#fff;">#262223</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Remo Styled Shoot Photos</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262223; color:#fff;">#262223</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#261B1A; color:#fff;">#261B1A</div>
+            </td>
+    </tr>
+<tr class="unchanged-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge unchanged-badge">Unchanged</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262223; color:#fff;">#262223</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#262223; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="unchanged-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📁</span>
+            <span class="title">Strata</span>
+            <span class="badge unchanged-badge">Unchanged</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#262322; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:68px;">
+            <span class="icon">📄</span>
+            <span class="title">Development Work</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#262221; color:#fff;">#262221</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#26201F; color:#fff;">#26201F</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#261E1F; color:#fff;">#261E1F</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#26201E; color:#fff;">#26201E</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#261F1D; color:#fff;">#261F1D</div>
+            </td>
+    </tr>
+<tr class="changed-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge changed-badge">Changed</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+            <td class="arrow-cell">→</td>
+            <td class="swatch-cell">
+                <div class="swatch new" style="background:#262221; color:#fff;">#262221</div>
+            </td>
+    </tr>
+<tr class="unchanged-row">
+        <td class="name-cell" style="padding-left:40px;">
+            <span class="icon">📄</span>
+            <span class="title">Project</span>
+            <span class="badge unchanged-badge">Unchanged</span>
+        </td>
+        
+            <td class="swatch-cell">
+                <div class="swatch" style="background:#262322; color:#fff;">#262322</div>
+            </td>
+            <td class="arrow-cell">—</td>
+            <td class="swatch-cell">
+                <div class="swatch unchanged" style="background:#262322; color:#fff;">unchanged</div>
+            </td>
+    </tr>
+
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Generated 2026-07-20 17:23:11 by Timing Colour Tool
+    </div>
+</div>
+
+<script>
+(function() {
+    // Filtering
+    const buttons = document.querySelectorAll('.filter-btn');
+    const rows = document.querySelectorAll('#treeBody tr');
+    const searchBox = document.getElementById('searchBox');
+
+    let activeFilter = 'all';
+
+    function applyFilters() {
+        const query = searchBox.value.toLowerCase().trim();
+
+        rows.forEach(row => {
+            let showByFilter = true;
+            if (activeFilter === 'changed') {
+                showByFilter = row.classList.contains('changed-row');
+            } else if (activeFilter === 'roots') {
+                showByFilter = row.classList.contains('root-row');
+            }
+
+            let showBySearch = true;
+            if (query) {
+                const title = row.querySelector('.title');
+                showBySearch = title && title.textContent.toLowerCase().includes(query);
+            }
+
+            row.classList.toggle('hidden', !(showByFilter && showBySearch));
+        });
+    }
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeFilter = btn.dataset.filter;
+            applyFilters();
+        });
+    });
+
+    searchBox.addEventListener('input', applyFilters);
+})();
+</script>
+</body>
+</html>
