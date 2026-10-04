@@ -102,3 +102,7 @@ Asks before deleting each component. Defaults to no.
 | `update_project_colours.py` | Core colour engine |
 | `uninstall.sh` | Clean removal |
 | `README.md` | This guide |
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE).
